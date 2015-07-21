@@ -4,9 +4,9 @@ Plugin Name: Phittle Wordpress Paywall plugin
 Plugin URI: http://www.phittle.com
 Description: Allows content creators to earn revenue for their posts. Works with PayPal, Credit Cards, Bitcoin, Apple pay and more
 Author: LioniX Evolve
-Author URI: http://www.lionix.com
-Version: 1.0-beta1
-License: Private
+Author URI: http://www.phittle.com
+Version: 0.1
+License: GPL v2 or later
 */
 
 $prefix = 'phittle_';
@@ -769,7 +769,7 @@ class Custom_Add_Meta_Box
         } // end foreach
         //--------------- END Harold CODE --------------------------------------------------------------------------------------------------------------
 
-        #DEFINICIÓN DE DATOS DE ARTÍCULO
+        #Article Data Definition
         $article_id = get_post_meta($post_id, 'phittle_article_id', true);
         $options = get_option( 'phittle_settings' );
         $publisherId  = $options['publisherId'];
@@ -791,12 +791,11 @@ class Custom_Add_Meta_Box
         #END - DEFINICIÓN DE DATOS DE ARTÍCULO
         $options = get_option( 'phittle_settings' );
         $phittleDomain = $options['apiEndpoint'];
-        $api_url = "http://".$phittleDomain;
+        $api_url = $phittleDomain;
 
-        #Si el post status es publish
         if (get_post_status($post_id) == "publish") {
 
-            #GET TOKEN DEL API
+            #GET TOKEN
             $json_url_source = $api_url."/api/v1/getToken";//Api url
             //Parametros del post
             $postfields = array(
@@ -1023,31 +1022,6 @@ function phittle_dev_do_options()
             $value = $service['value'];
             echo '<label><input type="checkbox" name="phittle_dev[' . $value . '] value="1" ';
             switch ($value) {
-                case 'google' :
-                    if (isset($options['google'])) {
-                        checked('on', $options['google']);
-                    }
-                    break;
-                case 'twitter' :
-                    if (isset($options['twitter'])) {
-                        checked('on', $options['twitter']);
-                    }
-                    break;
-                case 'facebook' :
-                    if (isset($options['facebook'])) {
-                        checked('on', $options['facebook']);
-                    }
-                    break;
-                case 'stumbleupon' :
-                    if (isset($options['stumbleupon'])) {
-                        checked('on', $options['stumbleupon']);
-                    }
-                    break;
-                case 'digg' :
-                    if (isset($options['digg'])) {
-                        checked('on', $options['digg']);
-                    }
-                    break;
                 case 'email' :
                     if (isset($options['email'])) {
                         checked('on', $options['email']);
@@ -1064,26 +1038,6 @@ function phittle_dev_do_options()
 function phittle_dev_services()
 {
     $services = array(
-        'google' => array(
-            'value' => 'google',
-            'label' => __('', 'phittle')
-        ),
-        'twitter' => array(
-            'value' => 'twitter',
-            'label' => __('', 'phittle')
-        ),
-        'facebook' => array(
-            'value' => 'facebook',
-            'label' => __('', 'phittle')
-        ),
-        'stumbleupon' => array(
-            'value' => 'stumbleupon',
-            'label' => __('', 'phittle')
-        ),
-        'digg' => array(
-            'value' => 'digg',
-            'label' => __('', 'phittle')
-        ),
         'email' => array(
             'value' => 'email',
             'label' => __('', 'phittle')
@@ -1105,7 +1059,10 @@ function phittle_dev_content_filter($content)
     if (is_main_query() && is_single() && !empty($article_id)) {
         //Means that we are in the single post page && this is the main run of the content
         // and not some 3rd party plugin calling the content
-        $new_content = '<div id="phittle_paywall_full" data-postid="' . $post->ID . '" data-phittleid="' . $article_id . '">';
+        $articleContent = get_the_content('');
+        $articleContent = substr($articleContent, 0, 50);
+        $articleContent = strip_tags($articleContent, '<br><br/>');
+        $new_content = '<div id="phittle_paywall_full" data-postid="' . $post->ID . '" data-phittleid="' . $article_id . '" data-phittleexcerpt="'. $articleContent .'">';
         $new_content .= phittle_display_data();
         $new_content .= '</div>';
     } elseif (is_main_query() && !is_single() && !empty($article_id)) {
@@ -1127,11 +1084,13 @@ function phittle_display_data()
     $shares = get_post_meta(get_the_ID(), 'phittle_article_shares', true);
     $article_id = get_post_meta(get_the_ID(), 'phittle_article_id', true);
     $categories_list = get_the_category_list(__(', '));
+    $article_postid=get_the_ID();
+    $article_url=post_permalink( $article_postid );
 
     $options = get_option( 'phittle_settings' );
     $phittleDomain = $options['apiEndpoint'];
 
-    wp_enqueue_script( 'phittle', 'http://'.$phittleDomain.'/bundles/lionixphittle/js/phittleapi.js' );
+    wp_enqueue_script('phittle', $phittleDomain . '/bundles/lionixphittle/js/phittleapi.js');
     wp_enqueue_style('smoothnessdialog', 'https://code.jquery.com/ui/1.11.4/themes/black-tie/jquery-ui.css');
 //     wp_enqueue_style('smoothnessdialog', CUSTOM_PHITTLE_DIR . '/css/jquery-ui.css');
     wp_enqueue_script('jquerydialog', 'https://code.jquery.com/ui/1.11.4/jquery-ui.min.js');
@@ -1139,71 +1098,14 @@ function phittle_display_data()
 
     $phittleid = "";
     if (($article_id)) {
-        $phittleid = '<input  type="hidden" value="' . $article_id . '" id="phittleid' . $article_id . '" name="phittleid' . $article_id . '" readonly>';
+        $phittleid = '<input  type="hidden" value="' . $article_id . '" id="phittleid' . $article_id . '" name="phittleid' . $article_id . '" data-phittleaccesslevel="'.$access_level.'" data-phittlearticleurl="'.$article_url.'" readonly>';
     }
     return $phittleid;
-}
-
-
-function phittle_dev_do_stumbleupon_button()
-{
-    $button = '<div id="stumbleupon"><su:badge layout="1"></su:badge></div>';
-
-    return $button;
-}
-
-function phittle_dev_do_digg_button()
-{
-    global $post;
-    $link = urlencode(get_permalink($post->ID));
-    $image = plugins_url('img/100x20-digg-button.gif', __FILE__);
-
-    $button = '<div id="digg"><a href="http://digg.com/submit?phase=2&url=' . $link . '"><img src="' . $image . '" height="16" /></a></div>';
-
-    return $button;
-}
-
-function phittle_dev_do_email_button()
-{
-    global $post;
-    $title = get_the_title($post->ID);
-    $image = plugins_url('img/email-icon.gif', __FILE__);
-
-    $button = '<div id="email"><a href="mailto:?subject=' . $title . '&body=This is a cool post: &lt;a href=' . get_permalink($post->ID) . '&gt;' . $title . '&lt;/a&gt;"><img src="' . $image . '" /> ' . __('Email this', 'phittle') . '</a></div>';
-
-    return $button;
 }
 
 function phittle_dev_head_scripts()
 {
     $options = get_option('phittle_dev');
-    if (isset($options['facebook']) && !is_admin()) {
-        ?>
-        <div id="fb-root"></div>
-        <script>(function (d, s, id) {
-                var js, fjs = d.getElementsByTagName(s)[0];
-                if (d.getElementById(id)) return;
-                js = d.createElement(s);
-                js.id = id;
-                js.src = "//connect.facebook.net/en_US/all.js#xfbml=1&appId=448961491860552";
-                fjs.parentNode.insertBefore(js, fjs);
-            }(document, 'script', 'facebook-jssdk'));</script>
-    <?php
-    }
-    if (isset($options['stumbleupon']) && !is_admin()) {
-        ?>
-        <script type="text/javascript">
-            (function () {
-                var li = document.createElement('script');
-                li.type = 'text/javascript';
-                li.async = true;
-                li.src = ('https:' == document.location.protocol ? 'https:' : 'http:') + '//platform.stumbleupon.com/1/widgets.js';
-                var s = document.getElementsByTagName('script')[0];
-                s.parentNode.insertBefore(li, s);
-            })();
-        </script>
-    <?php
-    }
 }
 
 add_action('wp_head', 'phittle_dev_head_scripts');
@@ -1228,26 +1130,6 @@ function phittle_dev_validate($input)
     foreach (phittle_dev_services() as $service) {
         $value = $service['value'];
         switch ($value) {
-            case 'google' :
-                if (!array_key_exists($input['google'], $value))
-                    $input['google'] = $input['google'];
-                break;
-            case 'twitter' :
-                if (!array_key_exists($input['twitter'], $value))
-                    $input['twitter'] = $input['twitter'];
-                break;
-            case 'facebook' :
-                if (!array_key_exists($input['facebook'], $value))
-                    $input['facebook'] = $input['facebook'];
-                break;
-            case 'stumbleupon' :
-                if (!array_key_exists($input['stumbleupon'], $value))
-                    $input['stumbleupon'] = $input['stumbleupon'];
-                break;
-            case 'digg' :
-                if (!array_key_exists($input['digg'], $value))
-                    $input['digg'] = $input['digg'];
-                break;
             case 'email' :
                 if (!array_key_exists($input['email'], $value))
                     $input['email'] = $input['email'];
